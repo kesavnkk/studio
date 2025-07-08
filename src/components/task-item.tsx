@@ -27,7 +27,10 @@ export function TaskItem({ task }: { task: Task }) {
     deleteTask(task.id);
   };
   
-  const isOverdue = new Date(task.reminderDate) < new Date() && !task.isCompleted;
+  const displayDate = new Date(task.eventDate || task.reminderDate);
+  // use 'PPp' to format if it's a new task with a specific time, otherwise just the date.
+  const dateFormat = task.eventDate ? 'PPp' : 'PP'; 
+  const isOverdue = displayDate < new Date() && !task.isCompleted;
 
   return (
     <Card className={cn('transition-all duration-300', task.isCompleted ? 'bg-muted/50 opacity-60' : 'bg-card')}>
@@ -39,7 +42,7 @@ export function TaskItem({ task }: { task: Task }) {
           <div className="flex-1 min-w-0">
             <p className={cn('font-medium break-words', task.isCompleted && 'line-through')}>{task.detail}</p>
             <p className={cn('text-sm text-muted-foreground', isOverdue && 'text-destructive font-semibold')}>
-              {format(new Date(task.reminderDate), 'PP')}
+              {format(displayDate, dateFormat)}
             </p>
           </div>
         </div>

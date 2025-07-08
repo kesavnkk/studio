@@ -5,7 +5,7 @@ import type { Task, Priority, User } from '@/lib/types';
 
 interface TasksContextType {
   tasks: Task[];
-  addTask: (detail: string, reminderDate: Date, priority: Priority) => void;
+  addTask: (detail: string, eventDate: Date, reminderDate: Date, priority: Priority) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   setTasks: (tasks: Task[]) => void;
@@ -19,10 +19,22 @@ export function TasksProvider({ children, user }: { children: ReactNode; user: U
   const getStorageKey = useCallback(() => `taskmaster_tasks_${user.email}`, [user.email]);
 
   useEffect(() => {
-    const storedTasks = localStorage.getItem(getStorageKey());
-    if (storedTasks) {
-      setTasks(JSON.parse(storedTasks));
-    } else {
+    try {
+      const storedTasks = localStorage.getItem(getStorageKey());
+      if (storedTasks) {
+        // Simple migration for old tasks
+        const parsedTasks = JSON.parse(storedTasks).map((task: any) => {
+          if (task.reminderDate && !task.eventDate) {
+            return { ...task, eventDate: task.reminderDate };
+          }
+          return task;
+        });
+        setTasks(parsedTasks);
+      } else {
+        setTasks([]);
+      }
+    } catch (error) {
+      console.error("Failed to parse tasks from localStorage", error);
       setTasks([]);
     }
   }, [getStorageKey]);
@@ -31,10 +43,11 @@ export function TasksProvider({ children, user }: { children: ReactNode; user: U
     localStorage.setItem(getStorageKey(), JSON.stringify(tasks));
   }, [tasks, getStorageKey]);
 
-  const addTask = (detail: string, reminderDate: Date, priority: Priority) => {
+  const addTask = (detail: string, eventDate: Date, reminderDate: Date, priority: Priority) => {
     const newTask: Task = {
       id: crypto.randomUUID(),
       detail,
+      eventDate: eventDate.toISOString(),
       reminderDate: reminderDate.toISOString(),
       priority,
       isCompleted: false,

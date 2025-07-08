@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, PlusCircle } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Clock, BellRing } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,7 +19,9 @@ import type { Priority } from '@/lib/types';
 
 const formSchema = z.object({
   detail: z.string().min(1, { message: 'Task detail is required.' }),
-  reminderDate: z.date({ required_error: 'A reminder date is required.' }),
+  eventDate: z.date({ required_error: 'An event date is required.' }),
+  eventTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format. Use HH:mm.' }),
+  earlyReminderHours: z.coerce.number().min(0).default(0),
   priority: z.enum(['High', 'Medium', 'Low']),
 });
 
@@ -30,17 +33,33 @@ export function TaskForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       detail: '',
+      eventTime: '09:00',
+      earlyReminderHours: 0,
       priority: 'Medium',
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    addTask(values.detail, values.reminderDate, values.priority as Priority);
+    const [hours, minutes] = values.eventTime.split(':').map(Number);
+    const eventDateTime = new Date(values.eventDate);
+    eventDateTime.setHours(hours, minutes, 0, 0);
+
+    const reminderDateTime = new Date(eventDateTime.getTime());
+    if (values.earlyReminderHours > 0) {
+      reminderDateTime.setHours(reminderDateTime.getHours() - values.earlyReminderHours);
+    }
+
+    addTask(values.detail, eventDateTime, reminderDateTime, values.priority as Priority);
+
     toast({
       title: 'Task Added',
       description: 'Your new task has been saved.',
     });
     form.reset();
+    form.setValue('eventDate', undefined as any, { shouldValidate: false });
+    form.setValue('eventTime', '09:00');
+    form.setValue('earlyReminderHours', 0);
+    form.setValue('priority', 'Medium');
   }
 
   return (
@@ -59,13 +78,13 @@ export function TaskForm() {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <FormField
             control={form.control}
-            name="reminderDate"
+            name="eventDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Reminder Date</FormLabel>
+              <FormItem className="flex flex-col justify-end">
+                <FormLabel>Event Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -86,13 +105,45 @@ export function TaskForm() {
               </FormItem>
             )}
           />
+           <FormField
+            control={form.control}
+            name="eventTime"
+            render={({ field }) => (
+              <FormItem className="flex flex-col justify-end">
+                <FormLabel>Event Time</FormLabel>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <FormControl>
+                    <Input type="time" className="pl-10" {...field} />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="earlyReminderHours"
+            render={({ field }) => (
+              <FormItem className="flex flex-col justify-end">
+                <FormLabel>Remind (Hours Prior)</FormLabel>
+                 <div className="relative">
+                  <BellRing className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <FormControl>
+                    <Input type="number" min="0" className="pl-10" {...field} />
+                  </FormControl>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="priority"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col justify-end">
                 <FormLabel>Priority</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select priority" />

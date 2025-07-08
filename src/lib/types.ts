@@ -3,7 +3,8 @@ export type Priority = 'High' | 'Medium' | 'Low';
 export interface Task {
   id: string;
   detail: string;
-  reminderDate: string; // ISO string
+  reminderDate: string; // ISO string for notification logic
+  eventDate?: string; // ISO string for event date/time display
   priority: Priority;
   isCompleted: boolean;
   notified: boolean;
