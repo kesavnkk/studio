@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useTasks } from '@/hooks/use-tasks';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import * as Tone from 'tone';
 
 export function NotificationHandler() {
